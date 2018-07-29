@@ -3,7 +3,11 @@ from utils import *
 from jobs import *
 
 # Test email utils
-# send_email("shunrongshen637@live.com", "Test", "Test2")
+with open("logs/errors.log.2018-07-29_21", 'r') as file:
+    content = file.readlines()
+print(type(content))
+content = [x for x in content]
+send_email("shunrongshen637@live.com", "Test", "".join(content))
 
 # Test logger
 # import logging
@@ -14,15 +18,15 @@ from jobs import *
 #     handler.doRollover()
 
 # Test log wrapper
-logger = Logger(global_logger_name)
-@log(logging.getLogger(global_logger_name))
-def div():
-    return 1/0
-@log(logging.getLogger(global_logger_name))
-def div2():
-    return 4/2
-div()
-div2()
+# logger = Logger(global_logger_name)
+# @log(logging.getLogger(global_logger_name))
+# def div():
+#     return 1/0
+# @log(logging.getLogger(global_logger_name))
+# def div2():
+#     return 4/2
+# div()
+# div2()
 
 
 

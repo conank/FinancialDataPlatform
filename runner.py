@@ -38,4 +38,14 @@ for handler in logger.handlers:
     handler.doRollover()
 
 # Send email to notify about the completion of the runner
-send_email(notify_email_addr, "Financial Data Platform", "Runner triggered")
+msg = ["Runner triggered\n"]
+info_log = log_file_info + "." + datetime2str(datetime.datetime.now().date(), handler_rollover_suffix)
+if checkFileExists(info_log):
+    # Construct email body
+    with open(info_log) as log_file:
+        logs = log_file.readlines()
+    email_body = ["Runner triggered\n"] + logs
+    send_email(notify_email_addr, "Financial Data Platform", "".join(email_body))
+else:
+    logger.error("Info log file doesn't exits")
+    

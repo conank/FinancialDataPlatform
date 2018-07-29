@@ -3,6 +3,7 @@ from settings import *
 import datetime
 import logging
 from logging import handlers
+from pathlib import Path
 
 def datetime2str(date_time, datetime_format):
     return datetime.datetime.strftime(date_time, datetime_format)
@@ -100,7 +101,12 @@ def log(logger):
         return execFunction
     return logFunction
 
-
+# Check if a file exists
+def checkFileExists(file_path):
+    file = Path(file_path)
+    if file.is_file():
+        return True
+    return False
 
 
         
