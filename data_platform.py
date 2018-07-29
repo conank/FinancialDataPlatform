@@ -38,3 +38,4 @@ insert_res = mongo_conn.insert_many(daily_data_list)
 mongo_client.close()
 
 #TODO Create indices for the collection if haven't been set yet
+

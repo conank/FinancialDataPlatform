@@ -4,7 +4,11 @@ from models import *
 import tushare as ts
 import copy
 
+# Instantiate a logger
+logger = Logger(global_logger_name)
+
 # Get the prices of all listed stocks on the last trade day
+@log(logger)
 def get_last_trade_day_price():
     # Get all the data for latest trading date
     prices_df = ts.get_today_all()
