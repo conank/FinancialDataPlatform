@@ -5,7 +5,7 @@ import tushare as ts
 import copy
 
 # Get the prices of all listed stocks on the last trade day
-def get_last_trade_day_price(date):
+def get_last_trade_day_price():
     # Get all the data for latest trading date
     prices_df = ts.get_today_all()
     prices_df.rename(columns={"trade":"close"}, inplace=True) # Match the column name to the results returned by get_k_data
@@ -20,7 +20,7 @@ def get_last_trade_day_price(date):
 
     # Repack the price data for insertion into the mongoDB
     for idx in range(numStocks):
-        daily_price = copy.deepcopy(daily_price_template)
+        daily_price = {} #copy.deepcopy(daily_price_template)
         for field in prices_dict.keys():
             daily_price[field] = prices_dict[field][idx]
         daily_price["date"] = datetime.datetime.utcfromtimestamp(latest_trade_date.timestamp())

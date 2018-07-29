@@ -1,11 +1,14 @@
 from utils import *
+from jobs import *
 import datetime
 import tushare as ts
 
 # Runner settings
 debug = True
-dates =  ["2018-10-1"]
+dates =  []
 date_format = "%Y-%m-%d"
+
+# TODO 1. Add logs to a file, 2. Send email to inform about successful implementation
 
 # Get today's date if no date is specified
 if dates is None or len(dates) == 0:
@@ -20,6 +23,7 @@ for date in dates:
     # Run weekly jobs on every Sunday
     if today.isoweekday() == 7:
         print("Running weekly jobs")
+        get_last_trade_day_price()
 
     # Run monthly jobs on the first day of each month
     if is_first_month_day(today):
