@@ -1,3 +1,5 @@
+from pymongo import MongoClient
+from settings import *
 import datetime
 
 def datetime2str(date_time, datetime_format):
@@ -32,4 +34,11 @@ def is_first_season_day(date):
             return True
     # Return False if the format of the input is unrecognized or the date is not the first day of a month
     return False
-        
+
+# output data to mongoDB     
+def write2mongo(data, mongodb, mongocol):
+    mongo_client = MongoClient(host=mongo_host, port=mongo_port)
+    mongo_conn = mongo_client[mongodb][mongocol]
+    insert_res = mongo_conn.insert_many(data)
+    mongo_client.close()
+    return insert_res
