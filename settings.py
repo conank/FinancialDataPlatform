@@ -1,3 +1,5 @@
+from enum import Enum
+
 # General settings
 notify_email_addr = "shunrongshen637@live.com"
 global_logger_name = "global_logger"
@@ -25,3 +27,14 @@ handler_rollover_suffix = "%Y-%m-%d"
 
 # Timezone configuration
 tz_local = "Hongkong"
+
+# Job tracker configuration
+jobtracker_mongodb = "job_tracker"
+jobtracker_mongocol = "jobs"
+class JobStatus(Enum):
+    Initiated = 0
+    Inprogress = 1
+    Finished = 2
+    AlreadyFinished = 3
+    JobNotInitialized = 4
+    Msg = {0: "Job Initiated", 1: "Job Inprogress", 2: "Job Finished", 3: "Job Already finished", 4: "Job Not Initialized"}

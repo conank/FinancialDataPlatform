@@ -1,6 +1,7 @@
 from settings import *
 from utils import *
 from jobs import *
+from jobs_offline import *
 import pymongo
 import unittest
 import sys
@@ -39,17 +40,6 @@ import sys
 # print(createMongoIdx("price_data", "daily", {"code": pymongo.ASCENDING, "date": pymongo.DESCENDING}))
 
 class Test(unittest.TestCase):
-    @unittest.skip("findDistinctMongoDoc")
-    def test_findDistinctMongoDoc(self):
-        res = findDistinctMongoDoc("price_data", "daily", "code")
-        print(res)
-
-    @unittest.skip("findOneMongoDoc")
-    def test_findOneMongoDoc(self):
-        res = findOneMongoDoc("price_data", "daily", {"code": "600125"}, ["name", "date"])
-        print(res)
-
-
     @unittest.skip("getLogger")
     def test_getLogger(self):
         handlers = [{"type": "stream", 
@@ -65,6 +55,41 @@ class Test(unittest.TestCase):
         print("UTC time: ", time_utc)
         time_local = utc2local(time_utc)
         print("local time: ", time_local)
+
+    @unittest.skip("not testing")
+    def test_mongodb_replace(self):
+        mongodb = MongoDb()
+        mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
+        prev_data = list(mongodb.find({"code": "603991"}))
+        print(prev_data)
+        prev_data[0]["name"] = "test"
+        mongodb.findOneAndReplace({"code": "603991"}, prev_data[0])
+        res = mongodb.find({"$and": [{"code": "603991"}, {"name": "test"}]})
+        print(res)
+
+    @unittest.skip("Not testing")
+    def test_initHistDailyPrice(self):
+        mongodb = MongoDb()
+        mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
+        initHistDailyPrice(key_val="603939", options={"start": "1991-01-01"})
+        res = mongodb.find(conditions={"code": "603939"})
+        print(res)
+        mongodb.close()
+
+    def test_jobTracker(self):
+        mongodb = MongoDb()
+        mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
+        mongodb.delete({"code": {"$nin": ["603939", "603920", "603970"]}})
+        job_info = {"key": "code", "val": ["603939", "603920"], "options": {"start": "1991-01-01"}}
+        job_tracker = JobTracker(initHistDailyPrice, job_info=job_info)
+        # Test job_tracker.exists
+        self.assertTrue(job_tracker.jobExists(initHistDailyPrice))
+        job_info = {"key": "code", "val": ["603939", "603920", "603970"], "options": {"start": "1991-01-01"}}
+        # Test setKeyInfo
+        job_tracker.setJobInfo(job_info)
+        # Test success case for job_tracker
+        res = job_tracker.start()
+        self.assertEqual(res["status"], JobStatus.Finished.value)
 
 if __name__=="__main__":
     unittest.main()

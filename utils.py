@@ -6,6 +6,7 @@ from logging import handlers
 from pathlib import Path
 import sys
 import pytz
+import time
 
 def datetime2str(date_time, datetime_format):
     return datetime.datetime.strftime(date_time, datetime_format)
@@ -24,6 +25,8 @@ def log(logger):
                 return exec_res
             except:
                 logger.error("Exception thrown for " + func.__name__, exc_info=1)
+        execFunction.__name__ = func.__name__
+        execFunction.__doc__ = func.__name__
         return execFunction
     return logFunction
 
@@ -76,14 +79,6 @@ def is_first_season_day(date):
             return True
     # Return False if the format of the input is unrecognized or the date is not the first day of a month
     return False
-
-# output data to mongoDB     
-def write2mongo(data, mongodb, mongocol):
-    mongo_client = MongoClient(host=mongo_host, port=mongo_port)
-    mongo_collection = mongo_client[mongodb][mongocol]
-    insert_res = mongo_collection.insert_many(data)
-    mongo_client.close()
-    return insert_res
 
 def send_email(to_addrs, subject, body):
     # Import smtplib for the actual sending function
@@ -173,7 +168,6 @@ def Logger(name=None, level=logging.INFO):
     return logger
 
 
-
 # Check if a file exists
 def checkFileExists(file_path):
     file = Path(file_path)
@@ -187,66 +181,8 @@ def isListOrTuple(data):
         return True
     return False
 
-# Create Index for Mongo collection
-# Inputs: db: MongoDB database
-#         col: MongoDB collection
-#         keys: a dict in the format {key: sort_order}, if the dict contains more than one key:val pair, a composite index will be created
-def createMongoIdx(db, col, keys):
-    mongo_client = MongoClient(host=mongo_host, port=mongo_port)
-    mongo_collection = mongo_client[db][col]
-    index_keys = []
-    for key, val in keys.items():
-        index_keys.append((key, val))
-    insert_res = mongo_collection.create_index(index_keys)
-    mongo_client.close()
-    return insert_res
 
-
-# Find Mongo doc given the conditions
-# db: database name
-# col: collection name
-# conditions: coniditions for filtering the docs in the collection
-# fields: type of tuple or list, contains the field(s) to return 
-def findMongoDoc(db, col, conditions, fields=None):
-    collection = MongoClient(host=mongo_host, port=mongo_port)[db][col]
-    if fields is not None and isListOrTuple(fields):
-        fields_tmp = {}
-        for field in fields:
-            fields_tmp[field] = 1
-        res = collection.find(conditions, fields_tmp)
-    else:
-        res = collection.find(conditions)
-    return res
-
-
-# Find one Mongo doc given the conditions
-# db: database name
-# col: collection name
-# conditions: coniditions for filtering the docs in the collection
-# fields: type of tuple or list, contains the field(s) to return 
-def findOneMongoDoc(db, col, conditions, fields=None):
-    collection = MongoClient(host=mongo_host, port=mongo_port)[db][col]
-    if fields is not None and isListOrTuple(fields):
-        fields_tmp = {}
-        for field in fields:
-            fields_tmp[field] = 1
-        res = collection.find_one(conditions, fields_tmp)
-    else:
-        res = collection.find_one(conditions)
-    return res
-
-
-# Find distinct values of a field in the Mongo Doc
-# db: name of the Mongo database
-# col: collection name
-# field: the field whose distinct values to be found
-# conditions: conditions used to filter the docs
-def findDistinctMongoDoc(db, col, field, conditions={}):
-    res = findMongoDoc(db, col, conditions).distinct(field)
-    return res
-
-        
-class MongodDb():
+class MongoDb:
     def __init__(self, host=mongo_host, port=mongo_port, db=None, col=None):
         self.client = MongoClient(host=host, port=port)
         if db is not None and col is not None:
@@ -256,7 +192,7 @@ class MongodDb():
         self.collection = self.client[db][col]
 
     def delete(self, criteria):
-        self.collection.delete_many(criteria)
+        return self.collection.delete_many(criteria)
 
     # Create Index for Mongo collection
     # keys: a dict in the format {key: sort_order}, if the dict contains more than one key:val pair, a composite index will be created
@@ -269,14 +205,17 @@ class MongodDb():
 
     # output data to mongoDB     
     def insert(self, data):
-        res = self.collection.insert_many(data)
+        if type(data) == type(dict()):
+            res = self.collection.insert_one(data)
+        else:
+            res = self.collection.insert_many(data)
         return res
     
 
     # Find Mongo doc given the conditions
     # conditions: coniditions for filtering the docs in the collection
     # fields: type of tuple or list, contains the field(s) to return 
-    def find(self, conditions, fields=None):
+    def find(self, conditions={}, fields=None):
         if fields is not None and isListOrTuple(fields):
             fields_tmp = {}
             for field in fields:
@@ -284,7 +223,7 @@ class MongodDb():
             res = self.collection.find(conditions, fields_tmp)
         else:
             res = self.collection.find(conditions)
-        return res
+        return list(res)
 
     # Find one Mongo doc given the conditions
     # conditions: coniditions for filtering the docs in the collection
@@ -308,3 +247,114 @@ class MongodDb():
     
     def close(self):
         self.client.close()
+
+    def databaseExists(self, db):
+        db_names = self.client.list_database_names()
+        if db in db_names:
+            return True
+        return False
+
+    # Check if the collection exists
+    def collectionExists(self, db, col):
+        if not self.databaseExists(db):
+            return False
+        collection_names = self.client[db].collection_names()
+        if col in collection_names:
+            return True
+        return False
+
+    def findOneAndReplace(self, criteria, replacement):
+        return self.collection.find_one_and_replace(criteria, replacement)
+
+# JobTracker automatically track the progress of a job by iterating through the keys used by the job to identify different subroutines
+# JobTracker use a database named "job_tracker" in MongoDB and store the key values of the job in a collection named after the job
+# The job data is stored as {key_name: key_name, key_val: [keys], status: job_status, timeCreated: timestamp}
+# The job function should at least accept inputs: key_name, key_val, options
+class JobTracker:
+    return_code = {"status": 0, "msg": ""}
+    # Initiate the job tracker
+    # job: a function that runs the job
+    # key: the key used to track the progress of the job {"key": key_name, "val": key_val}
+    def __init__(self, job, job_info=None):
+        self.job = job
+        self.mongodb = MongoDb(db=jobtracker_mongodb, col=jobtracker_mongocol)
+        if job_info is not None:
+            self.setJobInfo(job_info)
+
+    def setJobInfo(self, job_info, status=JobStatus.Initiated.value, job=None):
+        # Allow users to set a new job instead of only job info
+        if job is not None:
+            self.job = job
+        if self.jobExists():
+            self.mongodb.delete({"job": self.job.__name__})
+        self.mongodb.insert(self.constructJobRecord(job_info, status))
+
+    def constructJobRecord(self, job_info, status=JobStatus.Initiated.value, job=None):
+        if job is None:
+            job = self.job
+        record = {"job": job.__name__, "key_name": job_info["key"], "key_val": job_info["val"],
+                  "status": status, "timestamp": datetime.datetime.utcnow(), "options": None}
+        if "options" in job_info.keys():
+            record["options"] = job_info["options"]
+        return record
+
+    def retrieveJobRecord(self, job=None):
+        if job is None:
+            job = self.job
+        # Assume only one job record
+        res =  self.mongodb.findOne({"job": job.__name__})
+        return res
+
+    def deleteJobRecord(self, job=None):
+        if job is None:
+            job = self.job
+        return self.mongodb.delete({"job": job.__name__})
+
+    # Check if a job already exists
+    def jobExists(self, job=None):
+        if job is None:
+            job = self.job
+        if not self.mongodb.collectionExists(db=jobtracker_mongodb, col=jobtracker_mongocol):
+            return False
+        if len(self.mongodb.find({"job": job.__name__})) >= 1:
+            return True
+        return False
+
+    # options: input parameters to the job fucntion
+    def start(self, options=None):
+        # check if the job already in progress or has finished
+        if not self.jobExists(self.job):
+            self.return_code["status"] = JobStatus.JobNotInitialized.value
+            self.return_code["msg"] = JobStatus.Msg.value[JobStatus.JobNotInitialized.value]
+            return self.return_code
+        job_record = self.retrieveJobRecord()
+        if options is not None:
+            job_record["options"] = options
+
+        # If job already finished, return
+        if job_record["status"] == JobStatus.Finished.value:
+            self.return_code["status"] = JobStatus.AlreadyFinished.value
+            self.return_code["msg"] = JobStatus.Msg.value[JobStatus.AlreadyFinished.value]
+            return self.return_code
+
+        interval = 1 # Interval of job execution
+        if "interval" in job_record["options"].keys() and job_record["options"]["interval"] is not None:
+            interval = job_record["options"]["interval"]
+
+        # Loop through all values of key
+        while len(job_record["key_val"]) > 0:
+            key_val = job_record["key_val"].pop()
+            self.job(key_name=job_record["key_name"], key_val=key_val, options=job_record["options"])
+            job_record["timestamp"] = datetime.datetime.utcnow()
+            self.mongodb.findOneAndReplace({}, job_record)
+            time.sleep(interval)
+
+        # Mark the job as finished
+        job_record["status"] = JobStatus.Finished.value
+        job_record["timestamp"] = datetime.datetime.utcnow()
+        self.mongodb.findOneAndReplace({}, job_record)
+
+        # Return results
+        self.return_code["status"] = JobStatus.Finished.value
+        self.return_code["msg"] = JobStatus.Msg.value[JobStatus.Finished.value]
+        return self.return_code

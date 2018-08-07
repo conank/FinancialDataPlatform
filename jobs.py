@@ -33,7 +33,7 @@ def get_last_trade_day_price():
         prices_list.append(daily_price)
 
     # Save the data to MongoDB
-    mongodb = MongodDb()
+    mongodb = MongoDb()
     mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
     mongodb.insert(prices_list)
     mongodb.close()
@@ -61,6 +61,7 @@ def get_daily_price(code, name='', start='', end='', index=False):
         daily_price["name"] = name
         prices.append(daily_price)
     return prices
+
 
     
     
