@@ -214,8 +214,9 @@ class MongoDb:
 
     # Find Mongo doc given the conditions
     # conditions: coniditions for filtering the docs in the collection
-    # fields: type of tuple or list, contains the field(s) to return 
-    def find(self, conditions={}, fields=None):
+    # fields: type of tuple or list, contains the field(s) to return
+    # return_list: if True, the returned result will be converted to a list, otherwise mongo cursor
+    def find(self, conditions={}, fields=None, return_list=True):
         if fields is not None and isListOrTuple(fields):
             fields_tmp = {}
             for field in fields:
@@ -223,7 +224,9 @@ class MongoDb:
             res = self.collection.find(conditions, fields_tmp)
         else:
             res = self.collection.find(conditions)
-        return list(res)
+        if return_list:
+            return list(res)
+        return res
 
     # Find one Mongo doc given the conditions
     # conditions: coniditions for filtering the docs in the collection
@@ -242,7 +245,7 @@ class MongoDb:
     # field: the field whose distinct values to be found
     # conditions: conditions used to filter the docs
     def findDistinct(self, field, conditions={}):
-        res = self.find(conditions).distinct(field)
+        res = self.find(conditions, return_list=False).distinct(field)
         return res
     
     def close(self):
