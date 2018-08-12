@@ -7,6 +7,8 @@ from pathlib import Path
 import sys
 import pytz
 import time
+import subprocess
+import os
 
 def datetime2str(date_time, datetime_format):
     return datetime.datetime.strftime(date_time, datetime_format)
@@ -53,6 +55,10 @@ def local2utc(time_local):
         time_local = pytz.timezone(tz_local).localize(time_local)
     return time_local.astimezone(pytz.timezone("UTC"))
 
+
+def execShellCmd(command):
+    res = subprocess.run(command, stdout=subprocess.PIPE)
+    return res
 
 # Check if the given date is the first day of a month
 # Input date is either a datetime object or a string in the format of "%Y-%m-%d"
@@ -361,3 +367,23 @@ class JobTracker:
         self.return_code["status"] = JobStatus.Finished.value
         self.return_code["msg"] = JobStatus.Msg.value[JobStatus.Finished.value]
         return self.return_code
+
+
+
+# Restore the volume to the target container which is already up and running with a volume
+# source_folder: the folder that contains backup file
+# source_file: the name of the backup file
+# target: the container the volume to be restored into
+def restoreVolume(source_folder, source_file, target):
+    if "\\" in source_folder:
+        source_folder += "\\" + "backup"
+    else:
+        source_folder += "/backup"
+    cmd = ["docker", "run", "--rm", "--volumes-from", target,
+           "-v", source_folder + ":/backup", "ubuntu",
+           "bash", "-c", "cd " + mongo_data_path + " && tar xvf /backup/" + source_file + " --strip 1"]
+    print(" ".join(cmd))
+    res = execShellCmd(cmd)
+    return res
+
+

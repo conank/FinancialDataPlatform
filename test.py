@@ -76,6 +76,7 @@ class Test(unittest.TestCase):
         print(res)
         mongodb.close()
 
+    @unittest.skip("Not testing")
     def test_jobTracker(self):
         mongodb = MongoDb()
         mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
@@ -90,6 +91,16 @@ class Test(unittest.TestCase):
         # Test success case for job_tracker
         res = job_tracker.start()
         self.assertEqual(res["status"], JobStatus.Finished.value)
+
+    def test_backupVolume(self):
+        sink = os.getcwd()
+        res = backupVolume(source="mongodb", sink=sink)
+        self.assertEqual(res.returncode, 0)
+
+    def test_restoreVolume(self):
+        source_folder = os.getcwd()
+        res = restoreVolume(source_folder=source_folder, source_file="financial_data_2018-08-07.tar.gz", target="mongodb")
+        self.assertEqual(res.returncode, 0)
 
 if __name__=="__main__":
     unittest.main()

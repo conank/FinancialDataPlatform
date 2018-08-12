@@ -63,5 +63,23 @@ def get_daily_price(code, name='', start='', end='', index=False):
     return prices
 
 
+# Backup docker volume by first loading the volume of a container into another container, then zip it into a folder that linked to a local directory
+# source: the container name that running on the volume that needs to be backup
+# sink: the directory on the host machine to store the backup
+# file: the name of the backup
+@log(logger)
+def backupVolume(source, sink, file=None):
+    if "\\" in sink:
+        sink += "\\" + "backup"
+    else:
+        sink += "/backup"
+    if file is None:
+        file = backup_default_file_prefix + "_" + datetime2str(datetime.datetime.now(), "%Y-%m-%d") + ".tar.gz"
+    cmd = ["docker", "run", "--rm", "--volumes-from",
+           source, "-v", sink + ":/backup", "ubuntu",
+           "tar", "zcvf", "/backup/" + file, "/data/db"]
+    print(" ".join(cmd))
+    res = execShellCmd(cmd)
+    return res
     
     

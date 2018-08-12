@@ -7,6 +7,8 @@ global_logger_name = "global_logger"
 # MongoDB server settings
 mongo_host = "localhost"
 mongo_port = 27017
+mongo_data_path = "/data/db"
+mongo_docker_name = "mongodb"
 
 # Daily price settings
 daily_price_mongodb = "price_data"
@@ -38,3 +40,6 @@ class JobStatus(Enum):
     AlreadyFinished = 3
     JobNotInitialized = 4
     Msg = {0: "Job Initiated", 1: "Job Inprogress", 2: "Job Finished", 3: "Job Already finished", 4: "Job Not Initialized"}
+
+# Backup configuration
+backup_default_file_prefix = "financial_data"
