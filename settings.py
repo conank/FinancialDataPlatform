@@ -10,9 +10,13 @@ mongo_port = 27017
 mongo_data_path = "/data/db"
 mongo_docker_name = "mongodb"
 
-# Daily price settings
+# Jobs settings
 daily_price_mongodb = "price_data"
 daily_price_mongocol = "daily"
+stock_class_mongodb = "stock_classification"
+stock_class_mongocol_industry = "industry"
+stock_class_mongocol_concept = "concept"
+stock_class_mongocol_area = "area"
 
 # Email settings
 smtp_host = "smtp-mail.outlook.com"

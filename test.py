@@ -102,6 +102,9 @@ class Test(unittest.TestCase):
         res = restoreVolume(source_folder=source_folder, source_file="financial_data_2018-08-07.tar.gz", target="mongodb")
         self.assertEqual(res.returncode, 0)
 
+    def test_recordStockClassifications(self):
+        recordStockClassifications()
+
 if __name__=="__main__":
     unittest.main()
 

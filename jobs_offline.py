@@ -21,6 +21,7 @@ def initHistDailyPrice(*args, **kwargs):
     price_data = get_daily_price(code=code, name=name, start=start)
     # Write the price data into database
     mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
-    mongodb.insert(price_data)
+    if len(price_data) > 0:
+        mongodb.insert(price_data)
     mongodb.close()
         

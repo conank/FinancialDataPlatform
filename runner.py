@@ -21,7 +21,7 @@ for date in dates:
     # 2. No trading day is on Saturday or Sunday
     if isworkday(today) and not ts.is_holiday(datetime2str(today, date_format)):
         logger.info("Running daily jobs")
-        get_last_trade_day_price()
+        get_last_trade_day_price(today)
 
     # Run weekly jobs on every Sunday
     if today.isoweekday() == 7:
@@ -35,6 +35,7 @@ for date in dates:
     # Run seasonal jobs on the first day of each season
     if is_first_season_day(today):
         logger.info("Running seasonal jobs")
+        recordStockClassifications()
 
 # Rollover the logs everyweek
 logger.info("Rollovering logs")
