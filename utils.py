@@ -397,15 +397,3 @@ def transformDfToDict(df):
             data.append(stock)
         data.append(stock)
     return data
-
-
-# Transform dataframe returned by tushare into list of data
-def transformDfToDict(df):
-    data = []
-    for row in range(df.shape[0]):
-        stock = {}
-        for col in list(df.columns):
-            stock[col] = df[col][row]
-        data.append(stock)
-    return data
-
