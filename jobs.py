@@ -4,12 +4,37 @@ from models import *
 import tushare as ts
 import copy
 import getpass
+import retrying
+from retrying import retry
 
 # Instantiate envs
 logger = Logger(global_logger_name)
 
 # Get the prices of all listed stocks on the last trade day
+def get_daily_price(code, name='', start='', end='', index=False):
+    data = ts.get_k_data(code=code, start=start,
+                          end=end, ktype='D', index=index, pause=0.1)
+    prices = []
+    data_dict = data.to_dict()
+    for idx in list(data.index.values):
+        daily_price = {}
+        for field in data_dict.keys():
+            if field != "date":
+                daily_price[field] = data_dict[field][idx]
+            else:
+                daily_price[field] = datetime.datetime.utcfromtimestamp(
+                    str2datetime(data_dict[field][idx], "%Y-%m-%d").timestamp())
+        daily_price["timeModified"] = datetime.datetime.utcnow()
+        daily_price["timeCreated"] = datetime.datetime.utcnow()
+        daily_price["code"] = code
+        daily_price["name"] = name
+        prices.append(daily_price)
+    return prices
+
+
+# Get daily price info of the code in the period from start to end
 @log(logger)
+@retry(wait_exponential_multiplier=wait_exponential_multiplier, wait_exponential_max=wait_exponential_max, stop_max_attempt_number=stop_max_attempt_number)
 def get_last_trade_day_price(trade_day):
     # Get all the data for latest trading date
     prices_df = ts.get_today_all()
@@ -33,35 +58,9 @@ def get_last_trade_day_price(trade_day):
     mongodb.setCollection(daily_price_mongodb, daily_price_mongocol)
     mongodb.insert(prices_list)
     mongodb.close()
-
-
-# Get daily price info of the code in the period from start to end
 # return: dict that contains the info
-def get_daily_price(code, name='', start='', end='', index=False):
-    data = ts.get_k_data(code=code, start=start, 
-                          end=end, ktype='D', index=index, pause=0.1)
-    prices = []
-    data_dict = data.to_dict() 
-    for idx in list(data.index.values):
-        daily_price = {}
-        for field in data_dict.keys():
-            if field != "date":
-                daily_price[field] = data_dict[field][idx]
-            else:
-                daily_price[field] = datetime.datetime.utcfromtimestamp(
-                    str2datetime(data_dict[field][idx], "%Y-%m-%d").timestamp())
-        daily_price["timeModified"] = datetime.datetime.utcnow()
-        daily_price["timeCreated"] = datetime.datetime.utcnow()
-        daily_price["code"] = code
-        daily_price["name"] = name
-        prices.append(daily_price)
-    return prices
 
 
-# Backup docker volume by first loading the volume of a container into another container, then zip it into a folder that linked to a local directory
-# source: the container name that running on the volume that needs to be backup
-# sink: the directory on the host machine to store the backup
-# file: the name of the backup
 @log(logger)
 def backupVolume(source, sink, file=None):
     logger.info("User: %s", getpass.getuser())
@@ -77,9 +76,12 @@ def backupVolume(source, sink, file=None):
     print(" ".join(cmd))
     res = execShellCmd(cmd)
     return res
+# Backup docker volume by first loading the volume of a container into another container, then zip it into a folder that linked to a local directory
+# source: the container name that running on the volume that needs to be backup
+# sink: the directory on the host machine to store the backup
+# file: the name of the backup
     
 
-# Record various stock classifications using data from tushare every season
 def obtainClassData(api, class_name, mongo_col):
     logger.info("Fetching %s data", class_name)
     data_df = api()
@@ -95,6 +97,7 @@ def obtainClassData(api, class_name, mongo_col):
     mongodb.setCollection(stock_class_mongodb, mongo_col)
     mongodb.insert(data)
     mongodb.close()
+# Record various stock classifications using data from tushare every season
 
 @log(logger)
 def recordStockClassifications():
@@ -137,3 +140,40 @@ def recordStockClassifications():
     # 终止上市股票列表
     class_name = "terminated"
     obtainClassData(ts.get_terminated, class_name, class_name)
+
+
+def _getFundamental(api, fundamental_type, year, quarter):
+    logger.info("Fetching %s data", fundamental_type)
+    fundamental = api(year, quarter)
+    fundamental["year"] = year
+    fundamental["quarter"] = quarter
+    fundamental["year"] = fundamental["year"].astype(str)
+    fundamental["quarter"] = fundamental["quarter"].astype(int)
+    fundamental = transformDfToDict(fundamental)
+
+    # Write to mongodb
+    mongodb = MongoDb()
+    mongodb.setCollection(company_fundamental_mongodb, fundamental_type)
+    mongodb.insert(fundamental)
+    mongodb.close()
+
+# 获取公司财务报告,4季度报为年报
+@log(logger)
+def getFundamental(year, quarter):
+    # 业绩报告主表
+    _getFundamental(ts.get_report_data, "main_report", year, quarter)
+
+    # 盈利能力表
+    _getFundamental(ts.get_profit_data, "profit", year, quarter)
+
+    # 营运能力
+    _getFundamental(ts.get_operation_data, "operation", year, quarter)
+
+    # 成长能力
+    _getFundamental(ts.get_growth_data, "growth", year, quarter)
+
+    # 偿债能力
+    _getFundamental(ts.get_debtpaying_data, "liquidity", year, quarter)
+
+    # 现金流量
+    _getFundamental(ts.get_cashflow_data, "liquidity", year, quarter)

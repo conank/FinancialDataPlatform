@@ -3,6 +3,9 @@ from enum import Enum
 # General settings
 notify_email_addr = "shunrongshen637@live.com"
 global_logger_name = "global_logger"
+stop_max_attempt_number = 2
+wait_exponential_max = 10000
+wait_exponential_multiplier = 1000
 
 # MongoDB server settings
 mongo_host = "localhost"
@@ -17,6 +20,7 @@ stock_class_mongodb = "stock_classification"
 stock_class_mongocol_industry = "industry"
 stock_class_mongocol_concept = "concept"
 stock_class_mongocol_area = "area"
+company_fundamental_mongodb = "fundamental"
 
 # Email settings
 smtp_host = "smtp-mail.outlook.com"

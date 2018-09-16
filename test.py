@@ -105,6 +105,12 @@ class Test(unittest.TestCase):
     def test_recordStockClassifications(self):
         recordStockClassifications()
 
+    def test_getFundamentals(self):
+        getFundamental(2018, 1)
+
+    def test_get_last_trade_day_price(self):
+        get_last_trade_day_price(datetime.datetime.now())
+
 if __name__=="__main__":
     unittest.main()
 

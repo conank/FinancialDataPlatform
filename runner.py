@@ -36,6 +36,7 @@ for date in dates:
     if is_first_season_day(today):
         logger.info("Running seasonal jobs")
         recordStockClassifications()
+        getFundamental(today.year, today.month)
 
 # Rollover the logs everyweek
 logger.info("Rollovering logs")

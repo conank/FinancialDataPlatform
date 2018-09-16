@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from settings import *
+import numpy as np
 import datetime
 import logging
 from logging import handlers
@@ -9,6 +10,7 @@ import pytz
 import time
 import subprocess
 import os
+import MySQLdb
 
 def datetime2str(date_time, datetime_format):
     return datetime.datetime.strftime(date_time, datetime_format)
@@ -393,7 +395,11 @@ def transformDfToDict(df):
     for row in range(df.shape[0]):
         stock = {}
         for col in list(df.columns):
-            stock[col] = df[col][row]
-            data.append(stock)
+            colDtype = df.dtypes[col]
+            val = df[col][row]
+            if colDtype == np.int64 or colDtype == np.int32:
+                val = int(val)
+            stock[col] = val
         data.append(stock)
     return data
+
